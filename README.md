@@ -9,6 +9,8 @@ Model architectures will not always mirror the ones proposed in the papers, but 
     + [Temporal Convolution Resnet(TC-ResNet)](#temporal-convolution-resnet)
     + [Broadcasting Residual Network(BC-ResNet)](#broadcasting-residual-network)
     + [MatchboxNet](#matchboxnet)
+    + [ConvMixer]
+    + [KWT]
 
 # Implementations
 ## About DataSet

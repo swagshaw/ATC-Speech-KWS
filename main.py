@@ -10,7 +10,7 @@ import logging.config
 import time
 import argparse
 from utils.utils import *
-from utils.train_utils import *
+from train_utils import *
 from train import Trainer, get_dataloader_keyword
 import glob
 if __name__ == "__main__":
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     logger.info(f"{parameters.model} parameters: {parameter_number(model)}")
     logger.info(f"Total time {duration}, Avg: {duration / parameters.epoch}s")
 
-    logger.info(
-        f"test_loss {result['valid_loss']:.4f} "
-        f"| test_acc {100 * result['valid_accuracy']:.4f}"
-    )
+    # logger.info(
+    #     f"test_loss {result['valid_loss']:.4f} "
+    #     f"| test_acc {100 * result['valid_accuracy']:.4f}"
+    # )

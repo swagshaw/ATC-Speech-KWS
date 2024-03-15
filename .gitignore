@@ -33,11 +33,11 @@ test
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
-
+dataset/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
-
+*.wav
 # Unit test / coverage reports
 htmlcov/
 .tox/

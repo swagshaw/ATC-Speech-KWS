@@ -188,7 +188,7 @@ class MFCC_BCResnet(nn.Module):
         self.bins = bins
         self.channel_scale = channel_scale
         self.num_classes = num_classes
-        self.mfcc_layer = MFCC(sample_rate=self.sampling_rate, n_mfcc=self.bins, log_mels=True)
+        self.mfcc_layer = MFCC(sample_rate=self.sampling_rate, n_mfcc=self.bins, log_mels=True, melkwargs={"n_fft": 400, "hop_length": 160, "n_mels": 64})
         self.bc_resnet = BCResNet(num_classes, channel_scale)
 
     def forward(self, waveform):

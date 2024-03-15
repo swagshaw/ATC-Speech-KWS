@@ -25,9 +25,7 @@ class MFCC_KWS_Model(nn.Module):
         )
         self.model = model
     def forward(self, x):
-        print(x.shape)
         x = self.mfcc(x)
-        print(x.shape)
         x = self.model(x)
         return x
 
@@ -89,14 +87,15 @@ def select_model(model_name, total_class_num=None):
         model = MFCC_KWS_Model(SEResNet(n_class=total_class_num, scale=scale))
     else:
         model = None
-
+    print(model)
     return model
 
 
 if __name__ == "__main__":
     inputs = torch.randn(8, 1, 16000)
     # inputs = padding(inputs, 128)
-    model = select_model("seresnet1", 15)
+    model = select_model("bcresnet2", 15)
     outputs = model(inputs)
     print(outputs.shape)
+    print('num parameters:', sum(p.numel() for p in model.parameters() if p.requires_grad))
 

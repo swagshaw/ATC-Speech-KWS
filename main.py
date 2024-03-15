@@ -16,8 +16,8 @@ import glob
 if __name__ == "__main__":
     def options():
         parser = argparse.ArgumentParser(description="Input optional guidance for training")
-        parser.add_argument("--epoch", default=20, type=int, help="The number of training epoch")
-        parser.add_argument("--lr", default=0.01, type=float, help="Learning rate")
+        parser.add_argument("--epoch", default=50, type=int, help="The number of training epoch")
+        parser.add_argument("--lr", default=0.001, type=float, help="Learning rate")
         parser.add_argument("--batch", default=64, type=int, help="Training batch size")
         parser.add_argument("--step", default=30, type=int, help="Training step size")
         parser.add_argument("--gpu", default=1, type=int, help="Number of GPU device")
@@ -28,7 +28,7 @@ if __name__ == "__main__":
         parser.add_argument("--save", default="weight", type=str, help="The save name")
         parser.add_argument("--opt", default="adam", type=str, help="The optimizer")
         parser.add_argument("--sche", default="cos", type=str, help="The scheduler")
-        parser.add_argument()
+        parser.add_argument("--trainratio", default=1.0, type=float, help="The sub dataset train ratio")
         args = parser.parse_args()
         return args
 
@@ -50,11 +50,12 @@ if __name__ == "__main__":
     """
     Logger 
     """
-    save_path = f"{parameters.dataset}/{parameters.model}_lr{parameters.lr}_epoch{parameters.epoch}"
+    save_path = f"{parameters.dataset}/{parameters.save}/{parameters.model}_lr{parameters.lr}_epoch{parameters.epoch}"
     logging.config.fileConfig("./logging.conf")
     logger = logging.getLogger()
     os.makedirs(f"logs/{parameters.dataset}", exist_ok=True)
     fileHandler = logging.FileHandler("logs/{}.log".format(save_path), mode="w")
+    print(f"logs/{parameters.dataset}/{save_path}.log")
     formatter = logging.Formatter(
         "[%(levelname)s] %(filename)s:%(lineno)d > %(message)s"
     )

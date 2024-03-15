@@ -6,6 +6,7 @@
 @Description : train
 """
 import logging
+from sklearn.metrics import f1_score
 from tqdm import tqdm
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -30,7 +31,7 @@ def get_dataloader_keyword(data_path, class_list, class_encoding, batch_size=1):
         num_train = len(train_dataset)
         num_valid = int(num_train * 0.2)
         train_subset, valid_subset = random_split(train_dataset, [num_train - num_valid, num_valid])
-        
+
         # 改变训练数据集的大小在这里
         # x 就是分割的比例，x=1表示不分割，x=2表示分割为两份
         # train_subset = random_split(train_dataset, len(train_subset) // x)[0]
@@ -151,8 +152,10 @@ class Trainer:
                 self.loss_name["valid_total"] += labels.size(0)
                 self.loss_name["valid_correct"] += (predict == labels).sum().item()
                 self.loss_name["valid_accuracy"] = self.loss_name["valid_correct"] / self.loss_name["valid_total"]
+                self.loss_name["f1_score"] = f1_score(labels.cpu().numpy(), predict.cpu().numpy(), average='macro')
         logger.info(
             f"test_loss {self.loss_name['valid_loss']:.4f} "
-            f"| test_acc {100 * self.loss_name['valid_accuracy']:.4f}"
+            f"| test_acc {self.loss_name['valid_accuracy']:.4f}"
+            f"| f1_score {self.loss_name['f1_score']:.4f}"
         )
         return self.loss_name

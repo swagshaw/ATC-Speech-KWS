@@ -17,11 +17,13 @@ from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, 
 logger = logging.getLogger()
 
 
-def get_dataloader_keyword(data_path, class_list, class_encoding, batch_size=1):
+def get_dataloader_keyword(data_path, class_list, class_encoding, parameters):
     """
     CL task protocol: keyword split.
     To get the GSC data and build the data loader from a list of keywords.
     """
+    batch_size = parameters.batch
+    trainratio = parameters.trainratio
     if len(class_list) != 0:
         train_filename = readlines(f"{data_path}/train.txt")
         test_filename = readlines(f"{data_path}/test.txt")
@@ -31,10 +33,7 @@ def get_dataloader_keyword(data_path, class_list, class_encoding, batch_size=1):
         num_train = len(train_dataset)
         num_valid = int(num_train * 0.2)
         train_subset, valid_subset = random_split(train_dataset, [num_train - num_valid, num_valid])
-
-        # 改变训练数据集的大小在这里
-        # x 就是分割的比例，x=1表示不分割，x=2表示分割为两份
-        # train_subset = random_split(train_dataset, len(train_subset) // x)[0]
+        train_subset = Subset(train_dataset, range(int(trainratio * len(train_subset))))
 
         train_dataloader = DataLoader(train_subset, batch_size=batch_size, shuffle=True, drop_last=True)
         valid_dataloader = DataLoader(valid_subset, batch_size=batch_size, shuffle=False, drop_last=True)

@@ -73,7 +73,7 @@ if __name__ == "__main__":
     """
     data_path = os.path.join(parameters.root, parameters.dataset)
     train_loader, valid_loader, test_loader = get_dataloader_keyword(data_path, class_list,
-                                                       class_encoding, parameters.batch)
+                                                       class_encoding, parameters)
     start_time = time.time()
     Trainer(parameters, model).model_train(optimizer=optimizer, scheduler=scheduler,
                                                     train_dataloader=train_loader,

@@ -57,7 +57,7 @@ def print_profile(class_counts, total_clips, split_name):
 
 
 # Assuming 'train.txt' and 'test.txt' are in the current directory
-filenames = ['./train.txt', './test.txt']
+filenames = ['./train_withunkeyword.txt', './test_withunkeyword.txt']
 profile_dataset(filenames)
 class_counts, total_clips = profile_split(filenames[0])
 print_profile(class_counts, total_clips, "train")

@@ -34,8 +34,8 @@ class SpeechCommandDataset(Dataset):
         dataset_list = []
         for path in self.filename:
             category, wave_name = path.split("/")
-            if category in self.classes and category == "_silence_":
-                dataset_list.append(["silence", "silence"])
+            if "unknown" in self.classes and wave_name == "silence":
+                dataset_list.append(["silence", "unknown"])
             elif category in self.classes:
                 path = os.path.join(self.root, category, wave_name)
                 dataset_list.append([path, category])

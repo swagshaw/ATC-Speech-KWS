@@ -16,19 +16,20 @@ import glob
 if __name__ == "__main__":
     def options():
         parser = argparse.ArgumentParser(description="Input optional guidance for training")
-        parser.add_argument("--epoch", default=50, type=int, help="The number of training epoch")
+        parser.add_argument("--epoch", default=20, type=int, help="The number of training epoch")
         parser.add_argument("--lr", default=0.001, type=float, help="Learning rate")
         parser.add_argument("--batch", default=64, type=int, help="Training batch size")
         parser.add_argument("--step", default=30, type=int, help="Training step size")
         parser.add_argument("--gpu", default=1, type=int, help="Number of GPU device")
         parser.add_argument("--root", default="./dataset", type=str, help="The path of dataset")
         parser.add_argument("--dataset", default="atc", help="The name of the data set")
-        parser.add_argument("--model", default="seresnet2", type=str, help="models")
+        parser.add_argument("--model", default="seresnet1", type=str, help="models")
         parser.add_argument("--freq", default=30, type=int, help="Model saving frequency (in step)")
         parser.add_argument("--save", default="weight", type=str, help="The save name")
         parser.add_argument("--opt", default="adam", type=str, help="The optimizer")
         parser.add_argument("--sche", default="cos", type=str, help="The scheduler")
         parser.add_argument("--trainratio", default=1.0, type=float, help="The sub dataset train ratio")
+        parser.add_argument("--unknown_ratio", default=0.0, type=float, help="The unknown ratio")
         args = parser.parse_args()
         return args
 
@@ -38,12 +39,10 @@ if __name__ == "__main__":
     """
     Data 
     """
-    class_list = ["yes", "no", "nine", "three", "bed", "up", "down", "wow", "happy", "four",
-                  "stop", "go", "dog", "cat", "five", "tree", "one", "eight", "left", "right",
-                  "bird", "seven", "six", "two", "marvin", "on", "sheila", "off", "house", "zero"]
     if parameters.dataset == "atc":
-        class_list = glob.glob(f"{parameters.root}/{parameters.dataset}/data/*")
-        class_list = [os.path.basename(x) for x in class_list]
+        class_list = ['tiaozheng', 'tongchang', 'fanhang', 'qifei', 'yizhuanwan', 'baopo', 'xiaosudu', 'shache', 'kaiche', 'jinpaodao', 'huachu', 'jiesan', 'mingbai', 'youmen', 'fufei']
+        if parameters.unknown_ratio > 0.0:
+            class_list.append("unknown")
         print(class_list)
     class_encoding = {category: index for index, category in enumerate(class_list)}
 
@@ -53,7 +52,7 @@ if __name__ == "__main__":
     save_path = f"{parameters.dataset}/{parameters.save}/{parameters.model}_lr{parameters.lr}_epoch{parameters.epoch}"
     logging.config.fileConfig("./logging.conf")
     logger = logging.getLogger()
-    os.makedirs(f"logs/{parameters.dataset}", exist_ok=True)
+    os.makedirs(f"logs/{parameters.dataset}/{parameters.save}", exist_ok=True)
     fileHandler = logging.FileHandler("logs/{}.log".format(save_path), mode="w")
     print(f"logs/{parameters.dataset}/{save_path}.log")
     formatter = logging.Formatter(

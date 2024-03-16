@@ -25,8 +25,12 @@ def get_dataloader_keyword(data_path, class_list, class_encoding, parameters):
     batch_size = parameters.batch
     trainratio = parameters.trainratio
     if len(class_list) != 0:
-        train_filename = readlines(f"{data_path}/train.txt")
-        test_filename = readlines(f"{data_path}/test.txt")
+        if parameters.unknown_ratio > 0.0:
+            train_filename = readlines(f"{data_path}/train_withunkeyword.txt")
+            test_filename = readlines(f"{data_path}/test_withunkeyword.txt")
+        else:
+            train_filename = readlines(f"{data_path}/train.txt")
+            test_filename = readlines(f"{data_path}/test.txt")
         train_dataset = SpeechCommandDataset(f"{data_path}/data", train_filename, True, class_list, class_encoding)
         test_dataset = SpeechCommandDataset(f"{data_path}/data", test_filename, False, class_list, class_encoding)
                # Split train_dataset into training and validation sets

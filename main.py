@@ -16,7 +16,7 @@ import glob
 if __name__ == "__main__":
     def options():
         parser = argparse.ArgumentParser(description="Input optional guidance for training")
-        parser.add_argument("--epoch", default=20, type=int, help="The number of training epoch")
+        parser.add_argument("--epoch", default=50, type=int, help="The number of training epoch")
         parser.add_argument("--lr", default=0.001, type=float, help="Learning rate")
         parser.add_argument("--batch", default=64, type=int, help="Training batch size")
         parser.add_argument("--step", default=30, type=int, help="Training step size")

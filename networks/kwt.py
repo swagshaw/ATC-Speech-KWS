@@ -143,13 +143,13 @@ class KWT(nn.Module):
         return self.mlp_head(x)
 
 
-def kwt_from_name(model_name: str):
+def kwt_from_name(model_name: str, num_classes: int):
 
     models = {
         "kwt-1": {
             "input_res": [40, 101],
             "patch_res": [40, 1],
-            "num_classes": 15,
+            "num_classes": num_classes,
             "mlp_dim": 256,
             "dim": 64,
             "heads": 1,
@@ -162,7 +162,7 @@ def kwt_from_name(model_name: str):
         "kwt-2": {
             "input_res": [40, 101],
             "patch_res": [40, 1],
-            "num_classes": 15,
+            "num_classes": num_classes,
             "mlp_dim": 512,
             "dim": 128,
             "heads": 2,
@@ -175,7 +175,7 @@ def kwt_from_name(model_name: str):
         "kwt-3": {
             "input_res": [40, 98],
             "patch_res": [40, 1],
-            "num_classes": 15,
+            "num_classes": num_classes,
             "mlp_dim": 768,
             "dim": 192,
             "heads": 3,

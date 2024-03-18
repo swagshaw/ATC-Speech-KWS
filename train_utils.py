@@ -79,7 +79,7 @@ def select_model(model_name, total_class_num=None):
         b, r, c = model_name.split("_")[1:]
         model = MFCC_KWS_Model(MatchboxNet(B=int(b), R=int(r), C=int(c), bins=40, kernel_sizes=None,num_classes=total_class_num))
     elif "kwt" in model_name:
-        model = MFCC_KWS_Model(kwt_from_name(model_name))
+        model = MFCC_KWS_Model(kwt_from_name(model_name, total_class_num))
     elif "convmixer" in model_name:
         model = MFCC_KWS_Model(KWSConvMixer(input_size=[101, 40],num_classes=total_class_num))
     elif "seresnet" in model_name:

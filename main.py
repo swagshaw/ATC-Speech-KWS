@@ -23,13 +23,13 @@ if __name__ == "__main__":
         parser.add_argument("--gpu", default=1, type=int, help="Number of GPU device")
         parser.add_argument("--root", default="./dataset", type=str, help="The path of dataset")
         parser.add_argument("--dataset", default="atc", help="The name of the data set")
-        parser.add_argument("--model", default="seresnet1", type=str, help="models")
+        parser.add_argument("--model", default="kwt-1", type=str, help="models")
         parser.add_argument("--freq", default=30, type=int, help="Model saving frequency (in step)")
         parser.add_argument("--save", default="weight", type=str, help="The save name")
         parser.add_argument("--opt", default="adam", type=str, help="The optimizer")
         parser.add_argument("--sche", default="cos", type=str, help="The scheduler")
         parser.add_argument("--trainratio", default=1.0, type=float, help="The sub dataset train ratio")
-        parser.add_argument("--unknown_ratio", default=0.0, type=float, help="The unknown ratio")
+        parser.add_argument("--unknown_ratio", default=1.0, type=float, help="The unknown ratio")
         args = parser.parse_args()
         return args
 

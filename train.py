@@ -31,8 +31,8 @@ def get_dataloader_keyword(data_path, class_list, class_encoding, parameters):
         else:
             train_filename = readlines(f"{data_path}/train.txt")
             test_filename = readlines(f"{data_path}/test.txt")
-        train_dataset = SpeechCommandDataset(f"{data_path}/data", train_filename, True, class_list, class_encoding)
-        test_dataset = SpeechCommandDataset(f"{data_path}/data", test_filename, False, class_list, class_encoding)
+        train_dataset = SpeechCommandDataset(f"{data_path}/data", train_filename, True, class_list, class_encoding, parameters.noise)
+        test_dataset = SpeechCommandDataset(f"{data_path}/data", test_filename, False, class_list, class_encoding, parameters.noise)
                # Split train_dataset into training and validation sets
         num_train = len(train_dataset)
         num_valid = int(num_train * 0.2)

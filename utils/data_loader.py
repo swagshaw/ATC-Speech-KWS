@@ -11,9 +11,9 @@ import torchaudio
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-
+from torch_audiomentations import Compose, AddColoredNoise
 class SpeechCommandDataset(Dataset):
-    def __init__(self, root, filename, is_training, class_list, class_encoding):
+    def __init__(self, root, filename, is_training, class_list, class_encoding, noise_augmentation=None):
         super(SpeechCommandDataset, self).__init__()
         """
         Args:
@@ -29,7 +29,11 @@ class SpeechCommandDataset(Dataset):
         self.is_training = is_training
         self.class_encoding = class_encoding
         self.speech_dataset = self.combined_path()
-
+        self.noise_augmentation = noise_augmentation
+        if self.noise_augmentation is not None:
+            print("Noise augmentation is enabled")
+            print(f"SNR range: {noise_augmentation} - {noise_augmentation + 5} dB")
+            self.augment = AddColoredNoise(min_snr_in_db=noise_augmentation, max_snr_in_db=noise_augmentation + 5, p=1.0).cuda()
     def combined_path(self):
         dataset_list = []
         for path in self.filename:
@@ -48,6 +52,8 @@ class SpeechCommandDataset(Dataset):
             waveform = F.pad(waveform, [0, self.sample_length - waveform.shape[1]])
         else:
             waveform = waveform.narrow(1, 0, self.sample_length)
+        if self.noise_augmentation is not None:
+                waveform = self.augment(waveform.unsqueeze(0), sample_rate = sr).squeeze(0)
         if self.is_training:
             pad_length = int(waveform.shape[1] * 0.1)
             waveform = F.pad(waveform, [pad_length, pad_length])

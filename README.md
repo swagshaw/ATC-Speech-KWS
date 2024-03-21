@@ -47,11 +47,15 @@ _Keyword transformer: A self-attention model for keyword spotting_
 ```bash
 bash e1.sh
 ```
-## 实验二 不同噪声情况下的训练
+## 实验二 不同负样本情况下的训练
 ```bash
 bash e2.sh
 ```
 ## 实验三 不同数据集大小情况下的训练
 ```bash
 bash e3.sh
+```
+## 实验四 不同噪声情况下的训练
+```bash
+bash e4.sh
 ```

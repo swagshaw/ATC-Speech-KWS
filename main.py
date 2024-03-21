@@ -30,6 +30,7 @@ if __name__ == "__main__":
         parser.add_argument("--sche", default="cos", type=str, help="The scheduler")
         parser.add_argument("--trainratio", default=1.0, type=float, help="The sub dataset train ratio")
         parser.add_argument("--unknown_ratio", default=1.0, type=float, help="The unknown ratio")
+        parser.add_argument("--noise", default=-10, type=int, help="The noise augmentation")
         args = parser.parse_args()
         return args
 

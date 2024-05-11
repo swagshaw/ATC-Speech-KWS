@@ -13,7 +13,7 @@ from networks.bcresnet import BCResNet,SEResNet
 from networks.tcresnet import TCResNet
 from networks.matchboxnet import MatchboxNet
 from networks.kwt import kwt_from_name
-from networks.convmixer import KWSConvMixer
+from networks.convmixer import KWSConvMixer, KWSConvMixer_SE
 from torchaudio.transforms import MFCC
 class MFCC_KWS_Model(nn.Module):
     def __init__(self, model) -> None:
@@ -81,7 +81,10 @@ def select_model(model_name, total_class_num=None):
     elif "kwt" in model_name:
         model = MFCC_KWS_Model(kwt_from_name(model_name, total_class_num))
     elif "convmixer" in model_name:
-        model = MFCC_KWS_Model(KWSConvMixer(input_size=[101, 40],num_classes=total_class_num))
+        if model_name == "convmixer":
+            model = MFCC_KWS_Model(KWSConvMixer(input_size=[101, 40],num_classes=total_class_num))
+        else:
+            model = MFCC_KWS_Model(KWSConvMixer_SE(input_size=[101, 40],num_classes=total_class_num))
     elif "seresnet" in model_name:
         scale = int(model_name[-1])
         model = MFCC_KWS_Model(SEResNet(n_class=total_class_num, scale=scale))

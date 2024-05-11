@@ -9,8 +9,110 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math 
+import math
 
+########################################################################################################################
+#                                                Squeeze and Excitation                                                #
+########################################################################################################################
+class SELayer(nn.Module):
+    def __init__(self, dim, reduction=16, attend_dim="chan"):
+        super(SELayer, self).__init__()
+        self.attend_dim = attend_dim
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        hid_dim = dim // reduction
+
+        if hid_dim < 4:
+            hid_dim = 4
+
+        if attend_dim == "chan-freq":
+            self.fc = nn.Sequential(nn.Conv2d(1, 8, 3, stride=1, padding=1, bias=False),
+                                    nn.ReLU(inplace=True),
+                                    nn.Conv2d(8, 1, 3, stride=1, padding=1, bias=False),
+                                    nn.Sigmoid())
+
+        else:
+            self.fc = nn.Sequential(nn.Linear(dim, hid_dim, bias=False),
+                                    # nn.BatchNorm1d(hid_dim),
+                                    nn.ReLU(inplace=True),
+                                    nn.Linear(hid_dim, dim, bias=False),
+                                    nn.Sigmoid())
+
+    def forward(self, x):   #x size : [bs, chan, frames, freqs]
+        b, c, t, f = x.size()
+        if self.attend_dim == "chan":
+            y = self.avg_pool(x).view(b, c)
+            y = self.fc(y).view(b, c, 1, 1)
+
+        elif self.attend_dim == "chan_timewise":
+            y = torch.mean(x, dim=3).transpose(1, 2)  #x size : [bs, frames, chan]
+            y = self.fc(y).transpose(1, 2).view(b, c, t, 1)
+
+        elif self.attend_dim == "freq":
+            y = torch.mean(x, dim=(1, 2))
+            y = self.fc(y).view(b, 1, 1, f)
+        elif self.attend_dim == "time":
+            y = torch.mean(x, dim=(1, 3))
+            y = self.fc(y).view(b, 1, t, 1)
+        elif self.attend_dim == "freq_timewise":
+            y = torch.mean(x, dim=1)                  #x size : [bs, frames, freqs]
+            y = self.fc(y).view(b, 1, t, f)
+        elif self.attend_dim == "time_freqwise":
+            y = torch.mean(x, dim=3)                 #x size : [bs, chan, frames]
+            y = self.fc(y).view(b, t, 1, f)
+        elif self.attend_dim == "chan-freq":
+            y = torch.mean(x, dim=2).view(b, 1, c, f)
+            y = self.fc(y).view(b, c, 1, f)
+
+        return x * y.expand_as(x)
+    
+class ECALayer(nn.Module):
+    def __init__(self, dim, k_size=3, reduction=16, attend_dim="chan"):
+        super(ECALayer, self).__init__()
+        self.attend_dim = attend_dim
+        self.k_size = k_size
+        self.reduction = reduction
+        hid_dim = max(dim // reduction, 4)  # Ensuring a minimum dimension size for stability
+
+        if hid_dim < 4:
+            hid_dim = 4
+
+        if attend_dim == "chan":
+            self.avg_pool = nn.AdaptiveAvgPool2d(1)
+            self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False)
+            self.sigmoid = nn.Sigmoid()
+        elif attend_dim == "chan-freq":
+            # Example configuration for channel-frequency attention
+            self.avg_pool = nn.AdaptiveAvgPool2d(1)
+            self.conv = nn.Conv2d(1, 1, kernel_size=(k_size, k_size), padding=((k_size - 1) // 2, (k_size - 1) // 2), bias=False)
+            self.sigmoid = nn.Sigmoid()
+        
+
+    def forward(self, x):
+        b, c, t, f = x.size()
+
+        if self.attend_dim == "chan":
+            y = self.avg_pool(x)  # Global average pooling
+            y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+            y = self.sigmoid(y)
+        elif self.attend_dim == "chan-freq":
+            # Assume some reshaping and pooling adapted for channel-frequency
+            y = self.avg_pool(x).view(b, 1, c, -1)  # Adjusted pooling
+            y = self.conv(y).view(b, c, 1, 1)
+            y = self.sigmoid(y)
+        
+        elif self.attend_dim == "chan_timewise":
+            y = torch.mean(x, dim=3).transpose(1, 2)  #x size : [bs, frames, chan]
+            y = self.fc(y).transpose(1, 2).view(b, c, t, 1)
+
+        elif self.attend_dim == "freq":
+            y = torch.mean(x, dim=(1, 2))
+            y = self.fc(y).view(b, 1, 1, f)
+
+        elif self.attend_dim == "freq_timewise":
+            y = torch.mean(x, dim=1)                  #x size : [bs, frames, freqs]
+            y = self.fc(y).view(b, 1, t, f)
+
+        return x * y.expand_as(x)    
 ## activation layer
 class Swish(nn.Module):
     """Swish is a smooth, non-monotonic function that 
@@ -136,7 +238,7 @@ class ConvMixerBlock(nn.Module):
             nn.Conv2d(num_freq_filters, 1, kernel_size=1, stride=1, padding=0, bias=bias), 
             nn.BatchNorm2d(1),
             Swish(),)
-
+        self.freq_se = SELayer(num_freq_filters, reduction=4, attend_dim="freq_timewise")
         ## temporal domain encoding
         self.temporal_domain_encoding = nn.Sequential(
             SeparableConv1d(num_temporal_channels, num_temporal_channels, 
@@ -144,7 +246,7 @@ class ConvMixerBlock(nn.Module):
                             stride=1, padding=temporal_padding, bias=bias),
             nn.BatchNorm1d(num_temporal_channels),
             Swish(),)
-        
+        self.time_se = SELayer(num_temporal_channels, reduction=4, attend_dim="time_freqwise")
         self.dropout = nn.Dropout(p=dropout)
         
         ## mixer
@@ -160,7 +262,60 @@ class ConvMixerBlock(nn.Module):
         
         return skipInput + skipInput2 + x
         
+## convolutional mixer block with squeeze and excitation    
+class SEConvMixerBlock(nn.Module):
+    """ Performs convolution with mlp mixer. Processing steps ::
+        1) freq depthwise separable convolution
+        2) freq time-wise squeeze and excitation
+        3) time depthwise separable convolution
+        4) time freq-wise squeeze and excitation
+        5) mlp mixer
+        6) skip connection
+    
+    """
+    def __init__(self, temporal_length, num_temporal_channels=64, 
+                 temporal_kernel_size=3, temporal_padding=1,
+                 freq_domain_kernel_size=5, freq_domain_padding=2,
+                 num_freq_filters=64, 
+                 dropout=0.,
+                 bias=False):
+        super(SEConvMixerBlock, self).__init__()
 
+        ## frequency domain encoding
+        self.frequency_domain_encoding = nn.Sequential(
+            nn.Conv2d(1, num_freq_filters, kernel_size=3, stride=1, padding=1, bias=bias),
+            Swish(),
+            SeparableConv2d(num_freq_filters, num_freq_filters, 
+                            kernel_size=(freq_domain_kernel_size, 1),
+                            stride=1, padding=(freq_domain_padding, 0), bias=bias),
+            Swish(), 
+            nn.Conv2d(num_freq_filters, 1, kernel_size=1, stride=1, padding=0, bias=bias), 
+            nn.BatchNorm2d(1),
+            Swish(),)
+        self.freq_se = SELayer(num_freq_filters, reduction=4, attend_dim="freq_timewise")
+        ## temporal domain encoding
+        self.temporal_domain_encoding = nn.Sequential(
+            SeparableConv1d(num_temporal_channels, num_temporal_channels, 
+                            kernel_size=temporal_kernel_size,
+                            stride=1, padding=temporal_padding, bias=bias),
+            nn.BatchNorm1d(num_temporal_channels),
+            Swish(),)
+        self.time_se = SELayer(num_temporal_channels, reduction=4, attend_dim="time_freqwise")
+        self.dropout = nn.Dropout(p=dropout)
+        
+        ## mixer
+        self.mixer = nn.Sequential(
+            MixerBlock(time_dim=temporal_length, freq_dim=num_temporal_channels, dropout=0.),
+            Swish(),)
+        
+    def forward(self, x):
+        skipInput = x
+        skipInput2 = x = self.dropout(self.freq_se(self.frequency_domain_encoding(x.unsqueeze(1))).squeeze(1))
+        x = self.dropout(self.time_se(self.temporal_domain_encoding(x)))
+        x = self.mixer(x)
+        
+        return skipInput + skipInput2 + x
+    
 ## convolutional mixer block 
 class PreConvBlock(nn.Module):
 
@@ -277,11 +432,101 @@ class KWSConvMixer(nn.Module):
         batch, in_channels, timesteps = x.size()
         x = self.pooling(x).view(batch, in_channels)
         return self.mlp_head(x)
-    
+
+class KWSConvMixer_SE(nn.Module):
+    def __init__(self, input_size, 
+                 num_classes,
+                 feat_dim=64,
+                 dropout=0.):
+        
+        """ KWS Convolutional Mixer Model with Squeeze and Excitation
+        input:: audio spectrogram, default input shape [BS, 101, 40]
+        output:: prediction of command classes, default 12 classes
+        """
+        
+        super(KWSConvMixer_SE, self).__init__()
+        
+        self.num_classes = num_classes
+        self.temporal_dim, self.frequency_dim = input_size
+        
+        ## init conv (channel): output shape BS x feat_dim x T        
+        self.conv1 = nn.Sequential(
+            SeparableConv1d(self.frequency_dim, feat_dim, 
+                            kernel_size=5, stride=1, padding=2, bias=False),
+            nn.BatchNorm1d(feat_dim),
+            Swish(),)
+        self.se1 = SELayer(feat_dim, reduction=4, attend_dim="chan")
+        self.preConvMixer = PreConvBlock(self.temporal_dim, feat_dim,
+                                         kernel_size=7, padding=3,
+                                         dropout=dropout)
+
+        self.convMixer1 = SEConvMixerBlock(self.temporal_dim, feat_dim,
+                                         temporal_kernel_size=9, temporal_padding=4,
+                                         freq_domain_kernel_size=5, freq_domain_padding=2,
+                                         num_freq_filters=64, 
+                                         dropout=dropout)
+        
+        self.convMixer2 = SEConvMixerBlock(self.temporal_dim, feat_dim,
+                                         temporal_kernel_size=11, temporal_padding=5,
+                                         freq_domain_kernel_size=5, freq_domain_padding=2,
+                                         num_freq_filters=32, 
+                                         dropout=dropout)
+            
+        self.convMixer3 = SEConvMixerBlock(self.temporal_dim, feat_dim,
+                                         temporal_kernel_size=13, temporal_padding=6,
+                                         freq_domain_kernel_size=7, freq_domain_padding=3,
+                                         num_freq_filters=16, 
+                                         dropout=dropout)
+        
+        self.convMixer4 = SEConvMixerBlock(self.temporal_dim, feat_dim,
+                                         temporal_kernel_size=15, temporal_padding=7,
+                                         freq_domain_kernel_size=7, freq_domain_padding=3,
+                                         num_freq_filters=8, 
+                                         dropout=dropout)
+        
+        self.conv2 = nn.Sequential(
+            SeparableConv1d(feat_dim, feat_dim*2, 
+                            kernel_size=17, stride=1, padding=8, bias=False),
+            nn.BatchNorm1d(feat_dim*2),
+            Swish(),) 
+        
+        self.conv3 = nn.Sequential( 
+            SeparableConv1d(feat_dim*2, feat_dim*2, 
+                            kernel_size=19, stride=1, padding=18, dilation=2, bias=False),
+            nn.BatchNorm1d(feat_dim*2),
+            Swish(),) 
+        
+        self.conv4 = nn.Sequential( 
+            SeparableConv1d(feat_dim*2, feat_dim*2, 
+                            kernel_size=1, stride=1, padding=0, bias=False),
+            nn.BatchNorm1d(feat_dim*2),
+            Swish(),)
+
+        self.pooling = torch.nn.AdaptiveMaxPool1d(1) 
+        self.mlp_head = nn.Sequential(nn.Linear(feat_dim*2, self.num_classes, bias=True))
+        
+        
+    def forward(self, x):
+        x = x.squeeze(1)
+        x = self.conv1(x)
+        x = self.se1(x)
+        x = self.preConvMixer(x)
+        x = self.convMixer1(x)
+        x = self.convMixer2(x) 
+        x = self.convMixer3(x) 
+        x = self.convMixer4(x) 
+
+        x = self.conv2(x)
+        x = self.conv3(x)
+        x = self.conv4(x)
+        
+        batch, in_channels, timesteps = x.size()
+        x = self.pooling(x).view(batch, in_channels)
+        return self.mlp_head(x)    
     
 if __name__=='__main__':
 
-    model = KWSConvMixer(input_size = (98, 64), 
+    model = KWSConvMixer_SE(input_size = (98, 64), 
                          num_classes=12,
                          feat_dim=64,
                          dropout=0.0)
